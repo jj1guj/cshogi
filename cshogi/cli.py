@@ -242,11 +242,6 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
         moves = []
         usi_moves = []
         repetition_hash = defaultdict(int)
-        if csa:
-            engine_names = [engine.name for engine in engines_order]
-            if not multi_csa:
-                csa_exporter = CSA.Exporter(os.path.join(csa, '+'.join(engine_names) + '+' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csa'), append=False)
-            csa_exporter.info(board, engine_names, version='V2')
         if opening:
             opening_entry = opening_list[n // 2 % len(opening_list)]
             if opening_entry['type'] == 'sfen':
@@ -257,13 +252,20 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
                 # USI移動シーケンス形式：従来通り処理
                 for move_usi in opening_entry['moves']:
                     move = board.push_usi(move_usi)
-                    if csa:
-                        csa_exporter.move(move)
                     moves.append(move)
                     usi_moves.append(move_usi)
                     repetition_hash[board.zobrist_hash()] += 1
                     if board.move_number > opening_moves:
                         break
+        if csa:
+            engine_names = [engine.name for engine in engines_order]
+            if not multi_csa:
+                csa_exporter = CSA.Exporter(os.path.join(csa, '+'.join(engine_names) + '+' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csa'), append=False)
+            csa_exporter.info(board, engine_names, version='V2')
+            # opening_entry で従来形式の場合、既に適用した移動をCSAに記録
+            if opening and opening_entry['type'] == 'moves':
+                for move in moves:
+                    csa_exporter.move(move)
 
         # 盤面表示
         if is_display:
