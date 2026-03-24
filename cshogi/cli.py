@@ -174,11 +174,17 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
         opening_list = []
         with open(opening) as f:
             for line in f:
-                moves = line.strip()[15:]
-                if moves:
-                    opening_list.append(moves.split(' '))
+                line = line.strip()
+                if line.startswith('sfen '):
+                    # SFEN形式
+                    opening_list.append({'type': 'sfen', 'sfen': line[5:]})
                 else:
-                    opening_list.append([])
+                    # USI移動シーケンス形式（従来の形式）
+                    moves = line[15:] if len(line) > 15 else line
+                    if moves:
+                        opening_list.append({'type': 'moves', 'moves': moves.split(' ')})
+                    else:
+                        opening_list.append({'type': 'moves', 'moves': []})
         # インデックス指定
         if opening_index is not None:
             opening_list = [opening_list[opening_index]]
@@ -241,15 +247,24 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
                 csa_exporter = CSA.Exporter(os.path.join(csa, '+'.join(engine_names) + '+' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csa'), append=False)
             csa_exporter.info(board, engine_names, version='V2')
         if opening:
-            for move_usi in opening_list[n // 2 % len(opening_list)]:
-                move = board.push_usi(move_usi)
-                if csa:
-                    csa_exporter.move(move)
-                moves.append(move)
-                usi_moves.append(move_usi)
-                repetition_hash[board.zobrist_hash()] += 1
+            opening_entry = opening_list[n // 2 % len(opening_list)]
+            if opening_entry['type'] == 'sfen':
+                # SFEN形式：局面を設定
+                board.set_sfen(opening_entry['sfen'])
+                # SFEN形式の場合、手数制限をチェック
                 if board.move_number > opening_moves:
-                    break
+                    pass  # 既に手数が達していても、その局面から始める
+            else:
+                # USI移動シーケンス形式：従来通り処理
+                for move_usi in opening_entry['moves']:
+                    move = board.push_usi(move_usi)
+                    if csa:
+                        csa_exporter.move(move)
+                    moves.append(move)
+                    usi_moves.append(move_usi)
+                    repetition_hash[board.zobrist_hash()] += 1
+                    if board.move_number > opening_moves:
+                        break
 
         # 盤面表示
         if is_display:
