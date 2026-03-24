@@ -238,6 +238,7 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
 
         # 初期局設定
         board.reset()
+        position_sfen = 'startpos'
         moves = []
         usi_moves = []
         repetition_hash = defaultdict(int)
@@ -251,9 +252,7 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
             if opening_entry['type'] == 'sfen':
                 # SFEN形式：局面を設定
                 board.set_sfen(opening_entry['sfen'])
-                # SFEN形式の場合、手数制限をチェック
-                if board.move_number > opening_moves:
-                    pass  # 既に手数が達していても、その局面から始める
+                position_sfen = 'sfen ' + opening_entry['sfen']
             else:
                 # USI移動シーケンス形式：従来通り処理
                 for move_usi in opening_entry['moves']:
@@ -328,7 +327,7 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
 
             if not ponderhit:
                 # position
-                engine.position(usi_moves, listener=listener)
+                engine.position(usi_moves, sfen=position_sfen, listener=listener)
 
                 start_time = perf_counter()
 
@@ -354,7 +353,7 @@ def main(engine1: str, engine2: str, options1: Dict = {}, options2: Dict = {}, n
 
             # ponder
             if ponder and pondermove:
-                engine.position(usi_moves + [bestmove, pondermove], listener=listener)
+                engine.position(usi_moves + [bestmove, pondermove], sfen=position_sfen, listener=listener)
                 feature = executor.submit(engine.go, ponder=True, byoyomi=byoyomi, btime=remain_time[BLACK], wtime=remain_time[WHITE], binc=binc, winc=winc, listener=listener)
 
             score = usi_info_to_score(listener.info)
